@@ -13,6 +13,9 @@ plugins {
     id("com.diffplug.spotless") version "6.11.0"
     `maven-publish`
     signing
+
+    id("info.solidsoft.pitest") version "1.15.0" apply false
+    id("org.jetbrains.kotlinx.kover") version "0.7.5" apply false
 }
 
 val projectTitle: String by project
@@ -93,6 +96,7 @@ allprojects {
 
     repositories {
         mavenLocal()
+        mavenCentral()
         val repository = if (project.hasProperty("qa")) "sonarsource-qa" else "sonarsource"
         maven {
             url = uri("https://repox.jfrog.io/repox/${repository}")
@@ -133,6 +137,12 @@ subprojects {
     jacoco {
         toolVersion = "0.8.8"
     }
+    tasks.test {
+        // Note that project requires JDK 11 otherwise tests fail
+        configure<JacocoTaskExtension> {
+            isEnabled = false
+        }
+    }
 
     tasks.jacocoTestReport {
         reports {
@@ -157,6 +167,20 @@ subprojects {
     if (!project.path.startsWith(":its") && !project.path.startsWith(":private:its")) {
         tasks.test {
             useJUnitPlatform()
+        }
+    }
+
+    if (!project.path.startsWith(":its") && !project.path.startsWith(":private:its") && !project.path.startsWith(":kotlin-checks-test-sources") && !project.path.startsWith(":sonar-kotlin-test-api")) {
+        apply(plugin = "org.jetbrains.kotlinx.kover")
+
+        apply(plugin = "info.solidsoft.pitest")
+        configure<info.solidsoft.gradle.pitest.PitestPluginExtension> {
+            // According to https://docs.arcmutate.com/docs/kotlin.html
+            // > default version of pitest used by the gradle plugin is often very out of date
+            pitestVersion = "1.15.8"
+
+            junit5PluginVersion = "1.2.1"
+            verbosity = "VERBOSE"
         }
     }
 
